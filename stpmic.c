@@ -1096,3 +1096,21 @@ stpmic_ret_t stpmic_interrupt_write_source(uint32_t bitmap) {
 
     return STPMIC_RET_OK;
 }
+
+/* test whether the NVM controller is busy or not. */
+stpmic_ret_t stpmic_nvm_is_busy() {
+    stpmic_reg_t reg;
+    stpmic_ret_t ret = stpmic_read_direct(
+        STPMIC_REG_NVM_SR, &reg
+    );
+
+    if (ret != STPMIC_RET_OK) {
+        return ret;
+    }
+
+    if (reg & STPMIC_BIT_MASK(0)) {
+        return STPMIC_RET_BUSY;
+    }
+
+    return STPMIC_RET_OK;
+}

@@ -114,6 +114,7 @@ typedef enum {
     STPMIC_RET_ALREADY,
     STPMIC_RET_RANGE,
     STPMIC_RET_DISABLED,
+    STPMIC_RET_BUSY,
     STPMIC_RET_UNKNOWN,
 } stpmic_ret_t;
 
@@ -1648,6 +1649,31 @@ stpmic_ret_t stpmic_interrupt_read_source(uint32_t* out);
  * `STPMIC_RET_TIMEOUT` if timeout reached.
  */
 stpmic_ret_t stpmic_interrupt_write_source(uint32_t bitmap);
+
+/**
+ * test whether the NVM controller is busy or not.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_BUSY` if NVM controller is busy.
+ */
+stpmic_ret_t stpmic_nvm_is_busy();
+
+/* NVM commands. */
+typedef enum {
+    STPMIC_NVM_PROGRAM = 1,
+    STPMIC_NVM_READ = 2,
+} stpmic_nvm_t;
+
+/**
+ * execute a command of NVM controller.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+static inline stpmic_ret_t stpmic_nvm_exec_cmd(stpmic_nvm_t cmd) {
+    return stpmic_write_direct(STPMIC_REG_NVM_CR, cmd & 0x03u);
+}
 
 #ifdef __cplusplus
 }
