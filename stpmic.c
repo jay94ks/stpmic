@@ -1114,3 +1114,88 @@ stpmic_ret_t stpmic_nvm_is_busy() {
 
     return STPMIC_RET_OK;
 }
+
+/* read NVM shadow registers. */
+stpmic_ret_t stpmic_nvm_read(stpmic_nvmregs_t* out) {
+    stpmic_regid_t cur_id;
+    stpmic_ret_t ret;
+    stpmic_reg_t regs[STPMIC_REG_NVM_COUNT];
+
+    for (uint16_t i = 0; i < STPMIC_REG_NVM_COUNT; ++i) {
+        cur_id = (stpmic_reg_t)(i + STPMIC_REG_NVM_MAIN_CTRL_SHR);
+        
+        if ((ret = stpmic_read_direct(cur_id, &out->regs[i])) != STPMIC_RET_OK) {
+            return ret;
+        }
+    }
+
+    out->dirty = 0;
+    return STPMIC_RET_OK;
+}
+
+/* write NVM shadow registers. this does not program immediately. */
+stpmic_ret_t stpmic_nvm_write(stpmic_nvmregs_t* in) {
+    stpmic_regid_t cur_id;
+    stpmic_ret_t ret;
+    stpmic_reg_t regs[STPMIC_REG_NVM_COUNT];
+
+    for (uint16_t i = 0; i < STPMIC_REG_NVM_COUNT; ++i) {
+        cur_id = (stpmic_reg_t)(i + STPMIC_REG_NVM_MAIN_CTRL_SHR);
+
+        if ((in->dirty & (1u << i)) == 0) {
+            continue;
+        }
+
+        if ((ret = stpmic_write_direct(cur_id, in->regs[i])) != STPMIC_RET_OK) {
+            return ret;
+        }
+
+        // --> clear dirty flags.
+        in->dirty &= ~(1u << i);
+    }
+
+    return STPMIC_RET_OK;
+}
+
+/* wait the NVM controller to be not busy. */
+stpmic_ret_t stpmic_nvm_wait() {
+    stpmic_ret_t ret;
+    
+    while ((ret = stpmic_nvm_is_busy()) != STPMIC_RET_OK) {
+        if (ret != STPMIC_RET_BUSY) {
+            return ret;
+        }
+    }
+
+    return STPMIC_RET_OK;
+}
+
+/* program the NVM once. */
+stpmic_ret_t stpmic_nvm_program() {
+    stpmic_ret_t ret = stpmic_nvm_wait();
+    
+    if (ret != STPMIC_RET_OK) {
+        return ret;
+    }
+
+    if ((ret = stpmic_nvm_exec_cmd(STPMIC_NVMCMD_PROGRAM)) != STPMIC_RET_OK) {
+        return ret;
+    }
+
+    return stpmic_nvm_wait();
+}
+
+/* reload the NVM once. this discards all shadow register changes in STPMIC. */
+stpmic_ret_t stpmic_nvm_reload() {
+    stpmic_ret_t ret = stpmic_nvm_wait();
+    
+    if (ret != STPMIC_RET_OK) {
+        return ret;
+    }
+
+    if ((ret = stpmic_nvm_exec_cmd(STPMIC_NVMCMD_READ)) != STPMIC_RET_OK) {
+        return ret;
+    }
+
+    return stpmic_nvm_wait();
+}

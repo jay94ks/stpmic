@@ -1661,9 +1661,9 @@ stpmic_ret_t stpmic_nvm_is_busy();
 
 /* NVM commands. */
 typedef enum {
-    STPMIC_NVM_PROGRAM = 1,
-    STPMIC_NVM_READ = 2,
-} stpmic_nvm_t;
+    STPMIC_NVMCMD_PROGRAM = 1,
+    STPMIC_NVMCMD_READ = 2,
+} stpmic_nvmcmd_t;
 
 /**
  * execute a command of NVM controller.
@@ -1671,8 +1671,447 @@ typedef enum {
  * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
  * `STPMIC_RET_TIMEOUT` if timeout reached.
  */
-static inline stpmic_ret_t stpmic_nvm_exec_cmd(stpmic_nvm_t cmd) {
+static inline stpmic_ret_t stpmic_nvm_exec_cmd(stpmic_nvmcmd_t cmd) {
     return stpmic_write_direct(STPMIC_REG_NVM_CR, cmd & 0x03u);
+}
+
+/* VINOK_HYS. */
+typedef enum {
+    STPMIC_VINOK_HYS_200mV = 0,
+    STPMIC_VINOK_HYS_300mV = 1,
+    STPMIC_VINOK_HYS_400mV = 2,
+    STPMIC_VINOK_HYS_500mV = 3,
+} stpmic_vinok_hys_t;
+
+/* VINOK_THRES. */
+typedef enum {
+    STPMIC_VINOK_THRES_3V1 = 0,
+    STPMIC_VINOK_THRES_3V3 = 1,
+    STPMIC_VINOK_THRES_3V5 = 2,
+    STPMIC_VINOK_THRES_4V0 = 3,
+} stpmic_vinok_thres_t;
+
+/* RANK for power-cycle. */
+typedef enum {
+    STPMIC_RANK0 = 0,
+    STPMIC_RANK1,
+    STPMIC_RANK2,
+    STPMIC_RANK3,
+} stpmic_rank_t;
+
+/* BUCK #4 voltage in NVM. */
+typedef enum {
+    STPMIC_NVM_BUCK4_1V15 = 0,
+    STPMIC_NVM_BUCK4_1V2 = 1,
+    STPMIC_NVM_BUCK4_1V8 = 2,
+    STPMIC_NVM_BUCK4_3V3 = 3,
+} stpmic_nvm_buck4_t;
+
+/* BUCK #3 voltage in NVM. */
+typedef enum {
+    STPMIC_NVM_BUCK3_1V2 = 0,
+    STPMIC_NVM_BUCK3_1V8 = 1,
+    STPMIC_NVM_BUCK3_3V0 = 2,
+    STPMIC_NVM_BUCK3_3V3 = 3,
+} stpmic_nvm_buck3_t;
+
+/* BUCK #2 voltage in NVM. */
+typedef enum {
+    STPMIC_NVM_BUCK2_1V1 = 0,
+    STPMIC_NVM_BUCK2_1V2 = 1,
+    STPMIC_NVM_BUCK2_1V35 = 2,
+    STPMIC_NVM_BUCK2_1V5 = 3,
+} stpmic_nvm_buck2_t;
+
+/* BUCK #1 voltage in NVM. */
+typedef enum {
+    STPMIC_NVM_BUCK1_1V1 = 0,
+    STPMIC_NVM_BUCK1_1V15 = 1,
+    STPMIC_NVM_BUCK1_1V2 = 2,
+    STPMIC_NVM_BUCK1_1V5 = 3,
+} stpmic_nvm_buck1_t;
+
+/* LDO #1, #2 and #5 voltage in NVM. */
+typedef enum {
+    STPMIC_NVM_LDO125_1V8 = 0,
+    STPMIC_NVM_LDO125_2V5 = 1,
+    STPMIC_NVM_LDO125_2V9 = 2,
+    STPMIC_NVM_LDO125_3V3 = 3,
+} stpmic_nvm_ldo125_t;
+
+/* LDO #3 voltage in NVM. */
+typedef enum {
+    STPMIC_NVM_LDO3_1V8 = 0,
+    STPMIC_NVM_LDO3_2V5 = 1,
+    STPMIC_NVM_LDO3_3V3 = 2,
+    STPMIC_NVM_LDO3_HALF_BUCK2 = 3,
+} stpmic_nvm_ldo3_t;
+
+/* LDO #6 voltage in NVM. */
+typedef enum {
+    STPMIC_NVM_LDO6_1V0 = 0,
+    STPMIC_NVM_LDO6_1V2 = 1,
+    STPMIC_NVM_LDO6_1V8 = 2,
+    STPMIC_NVM_LDO6_3V3 = 3,
+} stpmic_nvm_ldo6_t;
+
+/* count of NVM registers. */
+#define STPMIC_REG_NVM_COUNT  \
+    ((STPMIC_REG_I2C_ADDR_SHR - STPMIC_REG_NVM_MAIN_CTRL_SHR) + 1)
+
+/* NVM shadow registers. */
+typedef struct {
+    uint32_t     dirty; // --> to manage dirty state.
+    stpmic_reg_t regs[STPMIC_REG_NVM_COUNT];
+} stpmic_nvmregs_t;
+
+/**
+ * read NVM shadow registers.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_nvm_read(stpmic_nvmregs_t* out);
+
+/**
+ * write NVM shadow registers. this does not program immediately.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_nvm_write(stpmic_nvmregs_t* in);
+
+/**
+ * wait the NVM controller to be not busy.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_nvm_wait();
+
+/**
+ * program the NVM once. 
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_nvm_program();
+
+/**
+ * reload the NVM once. this discards all shadow register changes in STPMIC.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_nvm_reload();
+
+/* NVM_MAIN_CTRL_SHR. */
+typedef struct {
+    /* VINOK threshold hysteresis. */
+    stpmic_vinok_hys_t vinok_hys;
+
+    /* VINOK_Rise threshold voltage. */
+    stpmic_vinok_thres_t vinok_thres;
+
+    /**
+     * FORCE_LDO4.
+     * 0: LDO4 starts with rank LDO4_RANK[1:0] only if VBUS_det turn-ON condition occurs.
+     * 1: LDO4 starts with rank LDO4_RANK[1:0] every turn-ON condition.
+     */
+    uint8_t force_ldo4;
+
+    /**
+     * PKEYLKP_OFF.
+     * 0: Turn-OFF on long key press inactive.
+     * 1: Turn-OFF on long key press active.
+     */
+    uint8_t pkeylkp_off;
+
+    /**
+     * AUTO_TURN_ON.
+     * 0: STPMIC1 does not start automatically on VIN rising.
+     * 1: STPMIC1 starts automatically on VIN rising.
+     */
+    uint8_t auto_turn_on;
+
+    /**
+     * LOCK_OCP.
+     * 0: STPMIC1 is turned OFF only if regulator related OCPOFF bit is set in Section 6.3.12 Bucks OCP turn-OFF control
+     * register (BUCKS_OCPOFF_CR) or Section 6.3.13 LDO OCP turn-OFF control register (LDOS_OCPOFF_CR) .
+     * 
+     * 1: short-circuit turn-OFF STPMIC1 and keep it in LOCK_OCP state until LOCK_OCP_FLAG is reset
+     */
+    uint8_t lock_ocp;
+} stpmic_nvm_mainctrl_t;
+
+/* get main control values. */
+static void stpmic_nvm_get_mainctrl(
+    stpmic_nvmregs_t* in, stpmic_nvm_mainctrl_t* out) 
+{
+    out->vinok_hys      = (stpmic_vinok_hys_t)((in->regs[0] >> 6) & 0x03);
+    out->vinok_thres    = (stpmic_vinok_thres_t)((in->regs[0] >> 4) & 0x03);
+    out->force_ldo4     = (in->regs[0] >> 3) & 0x01;
+    out->pkeylkp_off    = (in->regs[0] >> 2) & 0x01;
+    out->auto_turn_on   = (in->regs[0] >> 1) & 0x01;
+    out->lock_ocp       = (in->regs[0] >> 0) & 0x01;
+}
+
+/* set main control values. */
+static void stpmic_nvm_set_mainctrl(
+    stpmic_nvm_mainctrl_t* in, stpmic_nvmregs_t* dst)
+{
+    uint8_t old = dst->regs[0];
+    dst->regs[0]
+        = ((in->vinok_hys & 0x03u) << 6)
+        | ((in->vinok_thres & 0x03u) << 4)
+        | ((in->force_ldo4 & 0x01) << 3)
+        | ((in->pkeylkp_off & 0x01) << 2)
+        | ((in->auto_turn_on & 0x01) << 1)
+        | ((in->lock_ocp & 0x01) << 0)
+        ;
+
+    if (dst->regs[0] != old) {
+        dst->dirty |= (1u << 0);
+    }
+}
+
+/* NVM_BUCKS_RANK_SHR. */
+typedef struct {
+    stpmic_rank_t buck_rank[4];
+} stpmic_nvm_buckranks_t;
+
+/* get buck rank values. */
+static void stpmic_nvm_get_buckranks(
+    stpmic_nvmregs_t* in, stpmic_nvm_buckranks_t* out) 
+{
+    for (uint8_t i = 0; i < 4; ++i) {
+        out->buck_rank[i] = (stpmic_rank_t)((in->regs[1] >> (1u << i)) & 0x03);
+    }
+}
+
+/* set buck rank values. */
+static void stpmic_nvm_set_buckranks(
+    stpmic_nvm_buckranks_t* in, stpmic_nvmregs_t* dst) 
+{
+    uint8_t old = dst->regs[1];
+
+    dst->regs[1] = 0;
+    for (uint8_t i = 0; i < 4; ++i) {
+        dst->regs[1] |= (in->buck_rank[i] & 0x03) << (1u << i);
+    }
+
+    if (dst->regs[1] != old) {
+        dst->dirty |= (1u << 1);
+    }
+}
+
+/* NVM_LDOS_RANK_SHR1. */
+typedef struct {
+    stpmic_rank_t ldo_rank[4];
+} stpmic_nvm_ldorank1_t;
+
+/* get LDO #1 ~ #4 rank values. */
+static void stpmic_nvm_get_ldorank1(
+    stpmic_nvmregs_t* in, stpmic_nvm_ldorank1_t* out) 
+{
+    for (uint8_t i = 0; i < 4; ++i) {
+        out->ldo_rank[i] = (stpmic_rank_t)((in->regs[2] >> (1u << i)) & 0x03);
+    }
+}
+
+/* set LDO #1 ~ #4 rank values. */
+static void stpmic_nvm_set_ldorank1(
+    stpmic_nvm_ldorank1_t* in, stpmic_nvmregs_t* dst) 
+{
+    uint8_t old = dst->regs[2];
+
+    dst->regs[2] = 0;
+    for (uint8_t i = 0; i < 4; ++i) {
+        dst->regs[2] |= (in->ldo_rank[i] & 0x03) << (1u << i);
+    }
+
+    if (dst->regs[2] != old) {
+        dst->dirty |= (1u << 2);
+    }
+}
+
+/* NVM_LDOS_RANK_SHR2. */
+typedef struct {
+    /* LDOx_RANK. */
+    stpmic_rank_t ldo_rank[2];
+
+    /* REFDDR_RANK. */
+    stpmic_rank_t refddr_rank;
+
+    /**
+     * LDO3_BYPASS.
+     * 0: LDO3 not in bypass mode.
+     * 1: LDO3 in bypass mode.
+     */
+    uint8_t ldo3_bypass;
+
+    /**
+     * BUCK4_CLAMP: Clamp Buck4 output value to 1.3 V max.
+     * 0: VOUT[5:0] of Buck4 is not clamped.
+     * 1: VOUT[5:0] of Buck4 is clamped to b011100 (1.3 V).
+     */
+    uint8_t buck4_clamp;
+} stpmic_nvm_ldorank2_t;
+
+/* get LDO #5, #6, REFDDR rank values. */
+static void stpmic_nvm_get_ldorank2(
+    stpmic_nvmregs_t* in, stpmic_nvm_ldorank2_t* out) 
+{
+    out->ldo_rank[0]    = (stpmic_rank_t)((in->regs[3] >> 0) & 0x03);
+    out->ldo_rank[1]    = (stpmic_rank_t)((in->regs[3] >> 2) & 0x03);
+    out->refddr_rank    = (stpmic_rank_t)((in->regs[3] >> 4) & 0x03);
+    out->ldo3_bypass    = (in->regs[3] >> 6) & 0x01;
+    out->buck4_clamp    = (in->regs[3] >> 7) & 0x01;
+}
+
+/* set LDO #5, #6, REFDDR rank values. */
+static void stpmic_nvm_set_ldorank2(
+    stpmic_nvm_ldorank2_t* in, stpmic_nvmregs_t* dst) 
+{
+    uint8_t old = dst->regs[3];
+
+    dst->regs[3] 
+        = ((in->ldo_rank[0] & 0x03) << 0)
+        | ((in->ldo_rank[1] & 0x03) << 2)
+        | ((in->refddr_rank & 0x03) << 4)
+        | ((in->ldo3_bypass & 0x01) << 6)
+        | ((in->buck4_clamp & 0x01) << 7)
+        ;
+
+    if (dst->regs[3] != old) {
+        dst->dirty |= (1u << 3);
+    }
+}
+
+/* NVM_BUCKS_VOUT_SHR. */
+typedef struct {
+    stpmic_nvm_buck1_t buck1_vout;
+    stpmic_nvm_buck2_t buck2_vout;
+    stpmic_nvm_buck3_t buck3_vout;
+    stpmic_nvm_buck4_t buck4_vout;
+} stpmic_nvm_bucksvout_t;
+
+/* get bucks VOUT settings. */
+static inline void stpmic_nvm_get_bucksvout(
+    stpmic_nvmregs_t* in, stpmic_nvm_bucksvout_t* out) 
+{
+    out->buck4_vout     = (stpmic_nvm_buck4_t)((in->regs[4] >> 6) & 0x03);
+    out->buck3_vout     = (stpmic_nvm_buck3_t)((in->regs[4] >> 4) & 0x03);
+    out->buck2_vout     = (stpmic_nvm_buck2_t)((in->regs[4] >> 2) & 0x03);
+    out->buck1_vout     = (stpmic_nvm_buck1_t)((in->regs[4] >> 0) & 0x03);
+}
+
+/* set bucks VOUT settings. */
+static void stpmic_nvm_set_bucksvout(
+    stpmic_nvm_bucksvout_t* in, stpmic_nvmregs_t* dst) 
+{
+    uint8_t old = dst->regs[4];
+
+    dst->regs[4] 
+        = ((in->buck4_vout & 0x03) << 6)
+        | ((in->buck3_vout & 0x03) << 4)
+        | ((in->buck2_vout & 0x03) << 2)
+        | ((in->buck1_vout & 0x03) << 0)
+        ;
+
+    if (dst->regs[4] != old) {
+        dst->dirty |= (1u << 4);
+    }
+}
+
+/* NVM_LDOS_VOUT_SHR1. */
+typedef struct {
+    /**
+     * SWOUT_BOOST_OVP:
+     * 0: PWR_SW does not turn OFF if boost OVP occurs.
+     * 1: PWR_SW is turned OFF automatically if Boost OVP occurs.
+     */
+    uint8_t swout_boost_ovp;
+
+    /* LDO voltage settings. */
+    stpmic_nvm_ldo125_t ldo1_vout;
+    stpmic_nvm_ldo125_t ldo2_vout;
+    stpmic_nvm_ldo3_t   ldo3_vout;
+} stpmic_nvm_ldovout1_t;
+
+/* get LDO #1 ~ 3 VOUT, SWOUT settings. */
+static inline void stpmic_nvm_get_ldovout1(
+    stpmic_nvmregs_t* in, stpmic_nvm_ldovout1_t* out)
+{
+    out->swout_boost_ovp= (in->regs[5] >> 7) & 0x01;
+    out->ldo3_vout      = (stpmic_nvm_ldo3_t)((in->regs[5] >> 4) & 0x03);
+    out->ldo2_vout      = (stpmic_nvm_ldo125_t)((in->regs[5] >> 2) & 0x03);
+    out->ldo1_vout      = (stpmic_nvm_ldo125_t)((in->regs[5] >> 0) & 0x03);
+}
+
+/* set LDO #1 ~ 3 VOUT, SWOUT settings. */
+static void stpmic_nvm_set_ldovout1(
+    stpmic_nvm_ldovout1_t* in, stpmic_nvmregs_t* dst) 
+{
+    uint8_t old = dst->regs[5];
+
+    dst->regs[5] 
+        = ((in->swout_boost_ovp & 0x01) << 7)
+        | ((in->ldo3_vout & 0x03) << 4)
+        | ((in->ldo2_vout & 0x03) << 2)
+        | ((in->ldo1_vout & 0x03) << 0)
+        ;
+
+    if (dst->regs[5] != old) {
+        dst->dirty |= (1u << 5);
+    }
+}
+
+/* NVM_LDOS_VOUT_SHR1. */
+typedef struct {
+    stpmic_nvm_ldo125_t ldo5_vout;
+    stpmic_nvm_ldo6_t   ldo6_vout;
+} stpmic_nvm_ldovout2_t;
+
+/* get LDO #5, #6 VOUT settings. */
+static inline void stpmic_nvm_get_ldovout2(
+    stpmic_nvmregs_t* in, stpmic_nvm_ldovout2_t* out)
+{
+    out->ldo6_vout      = (stpmic_nvm_ldo6_t)((in->regs[6] >> 2) & 0x03);
+    out->ldo5_vout      = (stpmic_nvm_ldo125_t)((in->regs[6] >> 0) & 0x03);
+}
+
+/* set LDO #5, #6 VOUT settings. */
+static void stpmic_nvm_set_ldovout2(
+    stpmic_nvm_ldovout2_t* in, stpmic_nvmregs_t* dst) 
+{
+    uint8_t old = dst->regs[6];
+
+    dst->regs[6] 
+        = ((in->ldo6_vout & 0x03) << 2)
+        | ((in->ldo5_vout & 0x03) << 0)
+        ;
+
+    if (dst->regs[6] != old) {
+        dst->dirty |= (1u << 6);
+    }
+}
+
+/* get I2C address. */
+static inline void stpmic_nvm_get_i2c_addr(
+    stpmic_nvmregs_t* in, uint8_t* out) 
+{
+    *out = in->regs[7] & 0x7f;
+}
+
+/* set I2C address. */
+static inline void stpmic_nvm_set_i2c_addr(
+    stpmic_nvmregs_t* dst, uint8_t addr) 
+{
+    if ((dst->regs[7] & 0x7fu) != (addr & 0x7fu)) {
+        dst->regs[7] = addr & 0x7f;
+        dst->dirty |= (1u << 7);
+    }
 }
 
 #ifdef __cplusplus
