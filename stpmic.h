@@ -132,7 +132,7 @@ typedef enum {
 } stpmic_pol_t;
 
 /* register value type. */
-typedef uint16_t stpmic_reg_t;
+typedef uint8_t stpmic_reg_t;
 
 /* register ID type. */
 typedef enum {
