@@ -1845,7 +1845,7 @@ typedef struct {
 } stpmic_nvm_mainctrl_t;
 
 /* get main control values. */
-static void stpmic_nvm_get_mainctrl(
+static inline void stpmic_nvm_get_mainctrl(
     stpmic_nvmregs_t* in, stpmic_nvm_mainctrl_t* out) 
 {
     out->vinok_hys      = (stpmic_vinok_hys_t)((in->regs[0] >> 6) & 0x03);
@@ -1857,7 +1857,7 @@ static void stpmic_nvm_get_mainctrl(
 }
 
 /* set main control values. */
-static void stpmic_nvm_set_mainctrl(
+static inline void stpmic_nvm_set_mainctrl(
     stpmic_nvm_mainctrl_t* in, stpmic_nvmregs_t* dst)
 {
     uint8_t old = dst->regs[0];
@@ -1881,7 +1881,7 @@ typedef struct {
 } stpmic_nvm_buckranks_t;
 
 /* get buck rank values. */
-static void stpmic_nvm_get_buckranks(
+static inline void stpmic_nvm_get_buckranks(
     stpmic_nvmregs_t* in, stpmic_nvm_buckranks_t* out) 
 {
     for (uint8_t i = 0; i < 4; ++i) {
@@ -1890,7 +1890,7 @@ static void stpmic_nvm_get_buckranks(
 }
 
 /* set buck rank values. */
-static void stpmic_nvm_set_buckranks(
+static inline void stpmic_nvm_set_buckranks(
     stpmic_nvm_buckranks_t* in, stpmic_nvmregs_t* dst) 
 {
     uint8_t old = dst->regs[1];
@@ -1911,7 +1911,7 @@ typedef struct {
 } stpmic_nvm_ldorank1_t;
 
 /* get LDO #1 ~ #4 rank values. */
-static void stpmic_nvm_get_ldorank1(
+static inline void stpmic_nvm_get_ldorank1(
     stpmic_nvmregs_t* in, stpmic_nvm_ldorank1_t* out) 
 {
     for (uint8_t i = 0; i < 4; ++i) {
@@ -1920,7 +1920,7 @@ static void stpmic_nvm_get_ldorank1(
 }
 
 /* set LDO #1 ~ #4 rank values. */
-static void stpmic_nvm_set_ldorank1(
+static inline void stpmic_nvm_set_ldorank1(
     stpmic_nvm_ldorank1_t* in, stpmic_nvmregs_t* dst) 
 {
     uint8_t old = dst->regs[2];
@@ -1959,7 +1959,7 @@ typedef struct {
 } stpmic_nvm_ldorank2_t;
 
 /* get LDO #5, #6, REFDDR rank values. */
-static void stpmic_nvm_get_ldorank2(
+static inline void stpmic_nvm_get_ldorank2(
     stpmic_nvmregs_t* in, stpmic_nvm_ldorank2_t* out) 
 {
     out->ldo_rank[0]    = (stpmic_rank_t)((in->regs[3] >> 0) & 0x03);
@@ -1970,7 +1970,7 @@ static void stpmic_nvm_get_ldorank2(
 }
 
 /* set LDO #5, #6, REFDDR rank values. */
-static void stpmic_nvm_set_ldorank2(
+static inline void stpmic_nvm_set_ldorank2(
     stpmic_nvm_ldorank2_t* in, stpmic_nvmregs_t* dst) 
 {
     uint8_t old = dst->regs[3];
@@ -2007,7 +2007,7 @@ static inline void stpmic_nvm_get_bucksvout(
 }
 
 /* set bucks VOUT settings. */
-static void stpmic_nvm_set_bucksvout(
+static inline void stpmic_nvm_set_bucksvout(
     stpmic_nvm_bucksvout_t* in, stpmic_nvmregs_t* dst) 
 {
     uint8_t old = dst->regs[4];
@@ -2050,7 +2050,7 @@ static inline void stpmic_nvm_get_ldovout1(
 }
 
 /* set LDO #1 ~ 3 VOUT, SWOUT settings. */
-static void stpmic_nvm_set_ldovout1(
+static inline void stpmic_nvm_set_ldovout1(
     stpmic_nvm_ldovout1_t* in, stpmic_nvmregs_t* dst) 
 {
     uint8_t old = dst->regs[5];
@@ -2082,7 +2082,7 @@ static inline void stpmic_nvm_get_ldovout2(
 }
 
 /* set LDO #5, #6 VOUT settings. */
-static void stpmic_nvm_set_ldovout2(
+static inline void stpmic_nvm_set_ldovout2(
     stpmic_nvm_ldovout2_t* in, stpmic_nvmregs_t* dst) 
 {
     uint8_t old = dst->regs[6];
