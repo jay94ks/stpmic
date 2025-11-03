@@ -148,3 +148,65 @@ and if expected length and returned length mismatch, it'll be handled as `failur
 If you want to use `STPMIC_USE_HAL` option, 
 check supports in `stpmic_hal.h` file.
 and you can add HAL includes in `stpmic_hal.h` if missing.
+
+### How to program the NVM.
+```c
+
+const stpmic_reg_t NVM_REQ[STPMIC_REG_NVM_COUNT] = {
+    0x..., 
+    /**
+     * write wannabe values here. 
+     * or, you can compare using `dirty` flags in `stpmic_nvmregs_t`.
+     */
+};
+
+// ...
+
+stpmic_nvmregs_t nvm;
+if (stpmic_nvm_read(&nvm) != STPMIC_RET_OK) {
+    return;
+}
+
+if (memcmp(NVM_REQ, nvm.regs, sizeof(NVM_REQ)) == 0) {
+    return; // --> already programmed.
+}
+
+stpmic_nvm_mainctrl_t mctrl;
+
+// --> parse NVM_MAIN_CTRL_SHR register.
+stpmic_nvm_get_mainctrl(&nvm, &mctrl);
+
+// --> modify to wannabe state.
+mctrl.auto_turn_on = 1;
+mctrl.pkeylkp_off = 0;
+
+// --> then, apply changes back.
+stpmic_nvm_set_mainctrl(&in, &nvm);
+if (nvm.dirty == 0) {
+    // --> no changes. you can skip this.
+    return;
+}
+
+stpmic_nvm_write(&nvm); // --> this clears `dirty` flags.
+if (nvm.dirty != 0) {
+    // --> some registers couldn't be written.
+}
+
+// --> program once.
+stpmic_nvm_program();
+
+// --> verify NVM is programmed well
+stpmic_nvmregs_t temp;
+stpmic_nvm_reload();
+
+if (stpmic_nvm_read(&temp) != STPMIC_RET_OK) {
+    // error.
+    return;
+}
+
+if (memcmp(&temp, &nvm, sizeof(nvm)) != 0) {
+    return; // --> failed to program the NVM.
+}
+
+// --> success.
+```
