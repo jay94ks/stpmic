@@ -128,16 +128,17 @@ stpmic_ret_t stpmic_init(stpmic_i2c_t* dev, int16_t addr) {
 }
 
 /* read a register of STPMIC without cache. */
-stpmic_ret_t stpmic_read_direct(stpmic_regid_t reg, stpmic_reg_t* out) {
+stpmic_ret_t stpmic_read_direct(stpmic_regid_t _reg, stpmic_reg_t* out) {
     if (STPMIC1.state < STPMIC_DRV_INIT) {
         return STPMIC_RET_NODEV;
     }
     
-    if (reg >= STPMIC_REG_MAX) {
+    if (_reg >= STPMIC_REG_MAX) {
         return STPMIC_RET_INVALID;
     }
 
     uint8_t val = 0;
+    uint8_t reg = _reg;
 
 #if STPMIC_USE_HAL
     // --> transmit a `read` packet.
