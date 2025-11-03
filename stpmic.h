@@ -164,7 +164,7 @@ typedef enum {
     STPMIC_REG_LDO4_MAIN_CR = 0x28,
 
     /* maximum registers. */
-    STPMIC_REG_MAX = 0x29,
+    STPMIC_REG_MAX = STPMIC_REG_LDOx_MAIN_CR + 6,
 
     /* aliases, branches... */
     STPMIC_REG_BUCK1_MAIN_CR = STPMIC_REG_BUCKx_MAIN_CR + 0,

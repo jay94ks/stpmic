@@ -69,13 +69,13 @@ void stpmic_get_timeout(stpmic_timeout_t* out) {
 #if STPMIC_USE_CUSTOM
 /* initialize the STPMIC driver. */
 stpmic_ret_t stpmic_init(int16_t addr) {
-    if (addr > 0x7fu) {
+    if (addr > 0x7f) {
         return STPMIC_RET_INVALID;
     }
 #else
 /* initialize the STPMIC driver. */
 stpmic_ret_t stpmic_init(stpmic_i2c_t* dev, int16_t addr) {
-    if (!dev || addr > 0x7fu) {
+    if (!dev || addr > 0x7f) {
         return STPMIC_RET_INVALID;
     }
 #endif
@@ -253,8 +253,12 @@ stpmic_ret_t stpmic_read(stpmic_regid_t reg, stpmic_reg_t* out) {
     if (STPMIC1.cache[reg] & STPMIC_CACHE_MISMATCH) {
         return stpmic_read_direct(reg, out);
     }
+    
+    if (out) {
+    	*out = (uint8_t)(STPMIC1.cache[reg] & 0xffu);
+    }
 
-    return (uint8_t)(STPMIC1.cache[reg] & 0xffu);
+    return STPMIC_RET_OK;
 }
 
 /* write a register of STPMIC with cache. */
