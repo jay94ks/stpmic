@@ -253,7 +253,7 @@ stpmic_ret_t stpmic_read(stpmic_regid_t reg, stpmic_reg_t* out) {
     if (STPMIC1.cache[reg] & STPMIC_CACHE_MISMATCH) {
         return stpmic_read_direct(reg, out);
     }
-    
+
     if (out) {
     	*out = (uint8_t)(STPMIC1.cache[reg] & 0xffu);
     }
@@ -481,6 +481,32 @@ stpmic_ret_t stpmic_pwrctrl_init(stpmic_pwrctrl_t* pwrctrl) {
         return ret;
     }
 
+    return stpmic_write(STPMIC_REG_MAIN_CR, mcr);
+}
+
+/* enable the PWRCTRL pin's functionality. */
+stpmic_ret_t stpmic_pwrctrl_enable() {
+    stpmic_reg_t mcr;
+    stpmic_ret_t ret = stpmic_maincr(&mcr);
+
+    if (ret != STPMIC_RET_OK) {
+        return ret;
+    }
+
+    mcr |= STPMIC_MAINCR_PWRCTL_EN;
+    return stpmic_write(STPMIC_REG_MAIN_CR, mcr);
+}
+
+/* enable the PWRCTRL pin's functionality. */
+stpmic_ret_t stpmic_pwrctrl_disable() {
+    stpmic_reg_t mcr;
+    stpmic_ret_t ret = stpmic_maincr(&mcr);
+
+    if (ret != STPMIC_RET_OK) {
+        return ret;
+    }
+
+    mcr &= ~STPMIC_MAINCR_PWRCTL_EN;
     return stpmic_write(STPMIC_REG_MAIN_CR, mcr);
 }
 

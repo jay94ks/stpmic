@@ -557,6 +557,12 @@ typedef struct {
 /* initialize the PWRCTRL pin's functionality. */
 stpmic_ret_t stpmic_pwrctrl_init(stpmic_pwrctrl_t* pwrctrl);
 
+/* enable the PWRCTRL pin's functionality. */
+stpmic_ret_t stpmic_pwrctrl_enable();
+
+/* enable the PWRCTRL pin's functionality. */
+stpmic_ret_t stpmic_pwrctrl_disable();
+
 /* de-initialize PWRCTRL functionality. */
 stpmic_ret_t stpmic_pwrctrl_deinit();
 
