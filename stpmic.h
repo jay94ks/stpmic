@@ -132,7 +132,7 @@ typedef enum {
 } stpmic_pol_t;
 
 /* register value type. */
-typedef uint8_t stpmic_reg_t;
+typedef uint16_t stpmic_reg_t;
 
 /* register ID type. */
 typedef enum {
@@ -171,8 +171,51 @@ typedef enum {
     STPMIC_REG_LDO3_ALT_CR = 0x37,
     STPMIC_REG_LDO4_ALT_CR = 0x38,
 
+    /* interrupt registers. */
+    STPMIC_REG_INT_PENDING_R1 = 0x50,
+    STPMIC_REG_INT_PENDING_R2 = 0x51,
+    STPMIC_REG_INT_PENDING_R3 = 0x52,
+    STPMIC_REG_INT_PENDING_R4 = 0x53,
+    STPMIC_REG_INT_DBG_LATCH_R1 = 0x60,
+    STPMIC_REG_INT_DBG_LATCH_R2 = 0x61,
+    STPMIC_REG_INT_DBG_LATCH_R3 = 0x62,
+    STPMIC_REG_INT_DBG_LATCH_R4 = 0x63,
+    STPMIC_REG_INT_CLEAR_R1 = 0x70,
+    STPMIC_REG_INT_CLEAR_R2 = 0x71,
+    STPMIC_REG_INT_CLEAR_R3 = 0x72,
+    STPMIC_REG_INT_CLEAR_R4 = 0x73,
+    STPMIC_REG_INT_MASK_R1 = 0x80,
+    STPMIC_REG_INT_MASK_R2 = 0x81,
+    STPMIC_REG_INT_MASK_R3 = 0x82,
+    STPMIC_REG_INT_MASK_R4 = 0x83,
+    STPMIC_REG_INT_MASK_SET_R1 = 0x90,
+    STPMIC_REG_INT_MASK_SET_R2 = 0x91,
+    STPMIC_REG_INT_MASK_SET_R3 = 0x92,
+    STPMIC_REG_INT_MASK_SET_R4 = 0x93,
+    STPMIC_REG_INT_MASK_CLEAR_R1 = 0xa0,
+    STPMIC_REG_INT_MASK_CLEAR_R2 = 0xa1,
+    STPMIC_REG_INT_MASK_CLEAR_R3 = 0xa2,
+    STPMIC_REG_INT_MASK_CLEAR_R4 = 0xa3,
+    STPMIC_REG_INT_SRC_R1 = 0x80,
+    STPMIC_REG_INT_SRC_R2 = 0x81,
+    STPMIC_REG_INT_SRC_R3 = 0x82,
+    STPMIC_REG_INT_SRC_R4 = 0x83,
+
+    /* NVM registers. */
+    STPMIC_REG_NVM_SR = 0xb8,   // 0th: busy.
+    STPMIC_REG_NVM_CR = 0xb9,   // 0 ~ 1'th bit: opcode, 00, 11: nop, 01 / 10: program / read.
+    STPMIC_REG_NVM_MAIN_CTRL_SHR = 0xf8,
+    STPMIC_REG_NVM_BUCKS_RANK_SHR = 0xf9,
+    STPMIC_REG_NVM_LDOS_RANK_SHR1 = 0xfa,
+    STPMIC_REG_NVM_LDOS_RANK_SHR2 = 0xfb,
+    STPMIC_REG_NVM_BUCKS_VOUT_SHR = 0xfc,
+    STPMIC_REG_NVM_LDOS_VOUT_SHR1 = 0xfd,
+    STPMIC_REG_NVM_LDOS_VOUT_SHR2 = 0xfe,
+    STPMIC_REG_I2C_ADDR_SHR = 0xff,
+
     /* maximum registers. */
-    STPMIC_REG_MAX = STPMIC_REG_LDOx_ALT_CR + 6,
+    STPMIC_REG_CACHE_MAX = STPMIC_REG_LDOx_ALT_CR + 6,
+    STPMIC_REG_MAX = STPMIC_REG_I2C_ADDR_SHR + 1,
 
     /* aliases, branches... */
     STPMIC_REG_BUCK1_MAIN_CR = STPMIC_REG_BUCKx_MAIN_CR + 0,
@@ -557,6 +600,13 @@ static inline stpmic_ret_t stpmic_padspullcr(stpmic_reg_t* out) {
 
 /* structure for initializing PWRCTRL pin. */
 typedef struct {
+    /**
+     * if `pol` == `STPMIC_POL_ACTIVE_LOW`,
+     * `PWRCTRL` = 0: main, `PWRCTRL` = 1: alternative.
+     * 
+     * if `pol` == `STPMIC_POL_ACTIVE_HIGH`,
+     * `PWRCTRL` = 0: alternative, `PWRCTRL` = 1: main.
+     */
     stpmic_pol_t    pol;
     stpmic_pull_t   pull;
     uint8_t         en;
@@ -973,7 +1023,7 @@ typedef struct {
     uint8_t enable;
 } stpmic_buck_t;
 
-/* get the PKEY_TURNOFF_CR register value. */
+/* get the BUCKx_MAIN_CR register value. */
 static inline stpmic_ret_t stpmic_buck_main_cr(uint8_t nth, stpmic_reg_t* out) {
     if (nth <= 0 || nth > 4) {
         return STPMIC_RET_RANGE;
@@ -1120,7 +1170,6 @@ typedef struct {
     stpmic_ldo4src_t src;
 } stpmic_ldo_t;
 
-
 /* LDO voltages. */
 typedef enum {
     STPMIC_LDO123VOLTS_1V7 = 8,
@@ -1238,7 +1287,6 @@ static inline stpmic_ret_t stpmic_ldo_setup(uint8_t nth, stpmic_ldo_t* opts) {
 static inline stpmic_ret_t stpmic_ldo_alt_setup(uint8_t nth, stpmic_ldo_t* opts) {
     return __stpmic_ldo_setup(nth, 1, opts);
 }
-
 
 /**
  * enable the specified LDO.
@@ -1379,6 +1427,227 @@ static inline stpmic_ret_t stpmic_refddr_disable() {
 static inline stpmic_ret_t stpmic_refddr_alt_disable() {
     return __stpmic_refddr_enable(0);
 }
+
+/* interrupt flags. */
+enum {
+    /* VBUS on SWOUT pin (PWR_SW out) rises above SWOUT_Rise treshold. */
+    STPMIC_INTFLAG_SWOUT_RI = STPMIC_BIT_MASK(7),
+
+    /* VBUS on SWOUT pin (PWR_SW out) falls below above SWOUT_Fall treshold. */
+    STPMIC_INTFLAG_SWOUT_FA = STPMIC_BIT_MASK(6),
+
+    /* VBUS on VBUSOTG pin (PWR_USB_SW out) rises above VBUSOTG_Rise threshold. */
+    STPMIC_INTFLAG_VBUSOTG_RI = STPMIC_BIT_MASK(5),
+
+    /* VBUS on VBUSOTG pin (PWR_USB_SW out) falls below VBUSOTG_Fall threshold. */
+    STPMIC_INTFLAG_VBUSOTG_FA = STPMIC_BIT_MASK(4),
+
+    /* WAKEUP rising edge. */
+    STPMIC_INTFLAG_WKP_RI = STPMIC_BIT_MASK(3),
+
+    /* WAKEUP falling edge. */
+    STPMIC_INTFLAG_WKP_FA = STPMIC_BIT_MASK(2),
+
+    /* PONKEYn rising edge. */
+    STPMIC_INTFLAG_PKEY_RI = STPMIC_BIT_MASK(1),
+
+    /* PONKEYn falling edge detected. */
+    STPMIC_INTFLAG_PKEY_FA = STPMIC_BIT_MASK(0),
+
+    /* Overvoltage detected on Boost BSTOUT pin. */
+    STPMIC_INTFLAG_BST_OVP = STPMIC_BIT_MASK(15),
+
+    /* Overcurrent detected on Boost BSTOUT pin. */
+    STPMIC_INTFLAG_BST_OCP = STPMIC_BIT_MASK(14),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTFLAG_SWOUT_OCP = STPMIC_BIT_MASK(13),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTFLAG_VBUSOTG_OCP = STPMIC_BIT_MASK(12),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTFLAG_BUCK4_OCP = STPMIC_BIT_MASK(11),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTFLAG_BUCK3_OCP = STPMIC_BIT_MASK(10),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTFLAG_BUCK2_OCP = STPMIC_BIT_MASK(9),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTFLAG_BUCK1_OCP = STPMIC_BIT_MASK(8),
+
+    /* A short event has been detected on SWOUT pin. */
+    STPMIC_INTFLAG_SWOUT_SH = STPMIC_BIT_MASK(23),
+
+    /* A short event has been detected on VBUSOTG pin. */
+    STPMIC_INTFLAG_VBUSOTG_SH = STPMIC_BIT_MASK(22),
+
+    /* Current limitation detected on LDO6. */
+    STPMIC_INTFLAG_LDO6_OCP = STPMIC_BIT_MASK(21),
+
+    /* Current limitation detected on LDO5. */
+    STPMIC_INTFLAG_LDO5_OCP = STPMIC_BIT_MASK(20),
+
+    /* Current limitation detected on LDO4. */
+    STPMIC_INTFLAG_LDO4_OCP = STPMIC_BIT_MASK(19),
+
+    /* Current limitation detected on LDO3. */
+    STPMIC_INTFLAG_LDO3_OCP = STPMIC_BIT_MASK(18),
+
+    /* Current limitation detected on LDO2. */
+    STPMIC_INTFLAG_LDO2_OCP = STPMIC_BIT_MASK(17),
+
+    /* Current limitation detected on LDO1. */
+    STPMIC_INTFLAG_LDO1_OCP = STPMIC_BIT_MASK(16),
+
+    /* Voltage on SWIN pin (PWR_SW input) rises above SWIN_Rise threshold. */
+    STPMIC_INTFLAG_SWIN_RI = STPMIC_BIT_MASK(31),
+
+    /* Voltage on SWIN pin (PWR_SW input) falls below SWIN_Fall threshold. */
+    STPMIC_INTFLAG_SWIN_FA = STPMIC_BIT_MASK(30),
+
+    /* VIN drops below VINLOW_Rise threshold. */
+    STPMIC_INTFLAG_VINLOW_RI = STPMIC_BIT_MASK(27),
+
+    /* VIN rises above VINLOW_Fall threshold. */
+    STPMIC_INTFLAG_VINLOW_FA = STPMIC_BIT_MASK(26),
+
+    /* Temperature rises above Twrn_Rise threshold. */
+    STPMIC_INTFLAG_THW_RI = STPMIC_BIT_MASK(25),
+
+    /* Temperature drops below Twrn_Fall threshold. */
+    STPMIC_INTFLAG_THW_FA = STPMIC_BIT_MASK(24),
+};
+
+/**
+ * read `INT_PENDING_Rx` register.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_interrupt_pending(uint32_t* out);
+
+/**
+ * clear interrupts.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_interrupt_clear(uint32_t bitmap);
+
+/**
+ * get interrupt masks, `INT_MASK_Rx`. 
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_interrupt_read_mask(uint32_t* out);
+
+/**
+ * set interrupt masks.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_interrupt_mask_set(uint32_t bitmap) ;
+
+/**
+ * clear interrupt masks.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_interrupt_mask_clear(uint32_t bitmap);
+
+/* interrupt source flags. */
+enum {
+    /* SWOUT event source state. */
+    STPMIC_INTSRC_SWOUT = STPMIC_BIT_MASK(7),
+
+    /* VBUSOTG event source state. */
+    STPMIC_INTSRC_VBUSOTG = STPMIC_BIT_MASK(5),
+
+    /* WAKEUP event source state. */
+    STPMIC_INTSRC_WKP = STPMIC_BIT_MASK(3),
+
+    /* PONKEYn event source state. */
+    STPMIC_INTSRC_PKEY = STPMIC_BIT_MASK(1),
+
+    /* Overvoltage detected on Boost BSTOUT pin. */
+    STPMIC_INTSRC_BST_OVP = STPMIC_BIT_MASK(15),
+
+    /* Overcurrent detected on Boost BSTOUT pin. */
+    STPMIC_INTSRC_BST_OCP = STPMIC_BIT_MASK(14),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTSRC_SWOUT_OCP = STPMIC_BIT_MASK(13),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTSRC_VBUSOTG_OCP = STPMIC_BIT_MASK(12),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTSRC_BUCK4_OCP = STPMIC_BIT_MASK(11),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTSRC_BUCK3_OCP = STPMIC_BIT_MASK(10),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTSRC_BUCK2_OCP = STPMIC_BIT_MASK(9),
+
+    /* Current limitation detected on SWOUT pin. */
+    STPMIC_INTSRC_BUCK1_OCP = STPMIC_BIT_MASK(8),
+
+    /* A short event has been detected on SWOUT pin. */
+    STPMIC_INTSRC_SWOUT_SH = STPMIC_BIT_MASK(23),
+
+    /* A short event has been detected on VBUSOTG pin. */
+    STPMIC_INTSRC_VBUSOTG_SH = STPMIC_BIT_MASK(22),
+
+    /* Current limitation detected on LDO6. */
+    STPMIC_INTSRC_LDO6_OCP = STPMIC_BIT_MASK(21),
+
+    /* Current limitation detected on LDO5. */
+    STPMIC_INTSRC_LDO5_OCP = STPMIC_BIT_MASK(20),
+
+    /* Current limitation detected on LDO4. */
+    STPMIC_INTSRC_LDO4_OCP = STPMIC_BIT_MASK(19),
+
+    /* Current limitation detected on LDO3. */
+    STPMIC_INTSRC_LDO3_OCP = STPMIC_BIT_MASK(18),
+
+    /* Current limitation detected on LDO2. */
+    STPMIC_INTSRC_LDO2_OCP = STPMIC_BIT_MASK(17),
+
+    /* Current limitation detected on LDO1. */
+    STPMIC_INTSRC_LDO1_OCP = STPMIC_BIT_MASK(16),
+
+    /* Voltage on SWIN pin (PWR_SW input) rises above SWIN_Rise threshold. */
+    STPMIC_INTSRC_SWIN = STPMIC_BIT_MASK(31),
+
+    /* VIN drops below VINLOW_Rise threshold. */
+    STPMIC_INTSRC_VINLOW = STPMIC_BIT_MASK(27),
+
+    /* Temperature rises above Twrn_Rise threshold. */
+    STPMIC_INTSRC_THW = STPMIC_BIT_MASK(25),
+};
+
+/**
+ * read interrupt sources. 
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_interrupt_read_source(uint32_t* out);
+
+/**
+ * write interrupt sources. 
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ */
+stpmic_ret_t stpmic_interrupt_write_source(uint32_t bitmap);
 
 #ifdef __cplusplus
 }

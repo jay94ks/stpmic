@@ -34,7 +34,7 @@ static struct {
     uint32_t            timeout_w;
     
     /* cache: (MSB) xxxx xxxS VVVV VVVV (LSB). */
-    uint16_t            cache[STPMIC_REG_MAX];
+    uint16_t            cache[STPMIC_REG_CACHE_MAX];
 } STPMIC1 = {
 #if !STPMIC_USE_CUSTOM
     .dev = NULL,
@@ -69,7 +69,7 @@ void stpmic_get_timeout(stpmic_timeout_t* out) {
 #if STPMIC_USE_CUSTOM
 /* initialize the STPMIC driver. */
 stpmic_ret_t stpmic_init(int16_t addr) {
-    if (addr > 0x7f) {
+    if (addr > 0x7fu) {
         return STPMIC_RET_INVALID;
     }
 #else
@@ -195,7 +195,10 @@ stpmic_ret_t stpmic_read_direct(stpmic_regid_t reg, stpmic_reg_t* out) {
         *out = val;
     }
 
-    STPMIC1.cache[reg] = val;
+    if (reg < STPMIC_REG_CACHE_MAX) {
+        STPMIC1.cache[reg] = val;
+    }
+
     return STPMIC_RET_OK;
 }
 
@@ -236,7 +239,10 @@ stpmic_ret_t stpmic_write_direct(stpmic_regid_t reg, stpmic_reg_t val) {
     }
 #endif
 
-    STPMIC1.cache[reg] = val;
+    if (reg < STPMIC_REG_CACHE_MAX) {
+        STPMIC1.cache[reg] = val;
+    }
+    
     return STPMIC_RET_OK;
 }
 
@@ -250,7 +256,9 @@ stpmic_ret_t stpmic_read(stpmic_regid_t reg, stpmic_reg_t* out) {
         return STPMIC_RET_INVALID;
     }
 
-    if (STPMIC1.cache[reg] & STPMIC_CACHE_MISMATCH) {
+    if (reg >= STPMIC_REG_CACHE_MAX || (
+        STPMIC1.cache[reg] & STPMIC_CACHE_MISMATCH)) 
+    {
         return stpmic_read_direct(reg, out);
     }
 
@@ -271,7 +279,9 @@ stpmic_ret_t stpmic_write(stpmic_regid_t reg, stpmic_reg_t val) {
         return STPMIC_RET_INVALID;
     }
 
-    if (STPMIC1.cache[reg] & STPMIC_CACHE_MISMATCH) {
+    if (reg >= STPMIC_REG_CACHE_MAX || (
+        STPMIC1.cache[reg] & STPMIC_CACHE_MISMATCH)) 
+    {
         return stpmic_write_direct(reg, val);
     }
 
@@ -690,7 +700,14 @@ stpmic_ret_t __stpmic_buck_setup(uint8_t nth, uint8_t alt, stpmic_buck_t* opts) 
         val);
 }
 
-/* enable the specified buck converter. */
+/**
+ * enable the specified buck converter.
+ * @param nth 1 ~ 4.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
 stpmic_ret_t __stpmic_buck_enable(uint8_t nth, uint8_t alt) {
     stpmic_reg_t reg;
     stpmic_ret_t ret = alt
@@ -871,7 +888,7 @@ stpmic_ret_t __stpmic_ldo_disable(uint8_t nth, uint8_t alt) {
     stpmic_regid_t ldo = (stpmic_reg_t)((
         alt ? STPMIC_REG_LDOx_ALT_CR : STPMIC_REG_LDOx_MAIN_CR
     ) + (nth - 1));
-    
+
     stpmic_ret_t ret = stpmic_read(ldo, &reg);
 
     if (ret != STPMIC_RET_OK) {
@@ -918,4 +935,163 @@ stpmic_ret_t __stpmic_refddr_disable(uint8_t alt) {
     return stpmic_write((
         alt ? STPMIC_REG_REFDDR_ALT_CR : STPMIC_REG_REFDDR_MAIN_CR
     ), reg);
+}
+
+/* read `INT_PENDING_Rx` register. */
+stpmic_ret_t stpmic_interrupt_pending(uint32_t* out) {
+    uint32_t val = 0;
+
+    for (
+        uint8_t i = STPMIC_REG_INT_PENDING_R1;
+         i < STPMIC_REG_INT_PENDING_R4; ++i) 
+    {
+        stpmic_reg_t reg;
+        stpmic_ret_t ret = stpmic_read((stpmic_regid_t)i, &reg);
+
+        if (ret != STPMIC_RET_OK) {
+            return ret;
+        }
+
+        val |= ((uint32_t)reg) << (i << 3);
+    }
+
+    if (out) {
+        *out = val;
+    }
+
+    return STPMIC_RET_OK;
+}
+
+/* clear interrupts. */
+stpmic_ret_t stpmic_interrupt_clear(uint32_t bitmap) {
+    for (
+        uint8_t i = STPMIC_REG_INT_CLEAR_R1;
+         i < STPMIC_REG_INT_CLEAR_R4; ++i) 
+    {
+        const uint8_t u8 = bitmap >> (i << 3);
+        if (u8 == 0) {
+            continue;
+        }
+
+        stpmic_ret_t ret = stpmic_write((stpmic_regid_t)i, u8);
+
+        if (ret != STPMIC_RET_OK) {
+            return ret;
+        }
+    }
+
+    return STPMIC_RET_OK;
+}
+
+/* mask an interrupt. */
+stpmic_ret_t stpmic_interrupt_read_mask(uint32_t* out) {
+    uint32_t val = 0;
+
+    for (
+        uint8_t i = STPMIC_REG_INT_MASK_R1;
+         i < STPMIC_REG_INT_MASK_R4; ++i) 
+    {
+        stpmic_reg_t reg;
+        stpmic_ret_t ret = stpmic_read((stpmic_regid_t)i, &reg);
+
+        if (ret != STPMIC_RET_OK) {
+            return ret;
+        }
+
+        val |= ((uint32_t)reg) << (i << 3);
+    }
+
+    if (out) {
+        *out = val;
+    }
+
+    return STPMIC_RET_OK;
+}
+
+/* set interrupt masks. */
+stpmic_ret_t stpmic_interrupt_mask_set(uint32_t bitmap) {
+    for (
+        uint8_t i = STPMIC_REG_INT_MASK_SET_R1;
+         i < STPMIC_REG_INT_MASK_SET_R4; ++i) 
+    {
+        const uint8_t u8 = bitmap >> (i << 3);
+        if (u8 == 0) {
+            continue;
+        }
+
+        stpmic_ret_t ret = stpmic_write((stpmic_regid_t)i, u8);
+
+        if (ret != STPMIC_RET_OK) {
+            return ret;
+        }
+    }
+
+    return STPMIC_RET_OK;
+}
+
+/* clear interrupt masks. */
+stpmic_ret_t stpmic_interrupt_mask_clear(uint32_t bitmap) {
+    for (
+        uint8_t i = STPMIC_REG_INT_MASK_CLEAR_R1;
+         i < STPMIC_REG_INT_MASK_CLEAR_R4; ++i) 
+    {
+        const uint8_t u8 = bitmap >> (i << 3);
+        if (u8 == 0) {
+            continue;
+        }
+
+        stpmic_ret_t ret = stpmic_write((stpmic_regid_t)i, u8);
+
+        if (ret != STPMIC_RET_OK) {
+            return ret;
+        }
+    }
+
+    return STPMIC_RET_OK;
+}
+
+/* read interrupt sources. */
+stpmic_ret_t stpmic_interrupt_read_source(uint32_t* out) {
+    uint32_t val = 0;
+
+    for (
+        uint8_t i = STPMIC_REG_INT_SRC_R1;
+         i < STPMIC_REG_INT_SRC_R4; ++i) 
+    {
+        stpmic_reg_t reg;
+        stpmic_ret_t ret = stpmic_read((stpmic_regid_t)i, &reg);
+
+        if (ret != STPMIC_RET_OK) {
+            return ret;
+        }
+
+        val |= ((uint32_t)reg) << (i << 3);
+    }
+
+    if (out) {
+        *out = val;
+    }
+
+    return STPMIC_RET_OK;
+}
+
+/* write interrupt sources. */
+stpmic_ret_t stpmic_interrupt_write_source(uint32_t bitmap) {
+    for (
+        uint8_t i = STPMIC_REG_INT_SRC_R1;
+         i < STPMIC_REG_INT_SRC_R4; ++i) 
+    {
+        const uint8_t u8 = bitmap >> (i << 3);
+        if (u8 == 0) {
+            continue;
+        }
+
+        stpmic_ret_t ret = stpmic_write((stpmic_regid_t)i, u8);
+
+        if (ret != STPMIC_RET_OK) {
+            return ret;
+        }
+    }
+
+    return STPMIC_RET_OK;
 }
