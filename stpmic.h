@@ -159,12 +159,20 @@ typedef enum {
 
     /* power supplies control registers, writable. */
     STPMIC_REG_BUCKx_MAIN_CR = 0x20, // --> x = 1, 2, 3, 4.
+    STPMIC_REG_REFDDR_MAIN_CR = 0x24,
     STPMIC_REG_LDOx_MAIN_CR = 0x25,  // --> x = 1, 2, 5, 6.
     STPMIC_REG_LDO3_MAIN_CR = 0x27,
     STPMIC_REG_LDO4_MAIN_CR = 0x28,
+    
+    /* alternative mode registers. */
+    STPMIC_REG_BUCKx_ALT_CR = 0x30, // --> x = 1, 2, 3, 4.
+    STPMIC_REG_REFDDR_ALT_CR = 0x34,
+    STPMIC_REG_LDOx_ALT_CR = 0x35,  // --> x = 1, 2, 5, 6.
+    STPMIC_REG_LDO3_ALT_CR = 0x37,
+    STPMIC_REG_LDO4_ALT_CR = 0x38,
 
     /* maximum registers. */
-    STPMIC_REG_MAX = STPMIC_REG_LDOx_MAIN_CR + 6,
+    STPMIC_REG_MAX = STPMIC_REG_LDOx_ALT_CR + 6,
 
     /* aliases, branches... */
     STPMIC_REG_BUCK1_MAIN_CR = STPMIC_REG_BUCKx_MAIN_CR + 0,
@@ -976,6 +984,29 @@ static inline stpmic_ret_t stpmic_buck_main_cr(uint8_t nth, stpmic_reg_t* out) {
         out);
 }
 
+/* get the BUCKx_ALT_CR register value. */
+static inline stpmic_ret_t stpmic_buck_alt_cr(uint8_t nth, stpmic_reg_t* out) {
+    if (nth <= 0 || nth > 4) {
+        return STPMIC_RET_RANGE;
+    }
+
+    return stpmic_read(
+        (stpmic_regid_t)(STPMIC_REG_BUCKx_ALT_CR + (nth - 1)),
+        out);
+}
+
+/**
+ * setup the specified buck converter.
+ * @param nth 1 ~ 4.
+ * @param alt 0 for MAIN, 1 for ALT.
+ * @param opts options to set.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+stpmic_ret_t __stpmic_buck_setup(uint8_t nth, uint8_t alt, stpmic_buck_t* opts);
+
 /**
  * setup the specified buck converter.
  * @param nth 1 ~ 4.
@@ -985,7 +1016,33 @@ static inline stpmic_ret_t stpmic_buck_main_cr(uint8_t nth, stpmic_reg_t* out) {
  * `STPMIC_RET_TIMEOUT` if timeout reached.
  * `STPMIC_RET_RANGE` if `nth` value is out of range.
  */
-stpmic_ret_t stpmic_buck_setup(uint8_t nth, stpmic_buck_t* opts);
+static inline stpmic_ret_t stpmic_buck_setup(uint8_t nth, stpmic_buck_t* opts) {
+    return __stpmic_buck_setup(nth, 0, opts);
+}
+
+/**
+ * setup the specified buck converter.
+ * @param nth 1 ~ 4.
+ * @param opts options to set.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_buck_alt_setup(uint8_t nth, stpmic_buck_t* opts) {
+    return __stpmic_buck_setup(nth, 1, opts);
+}
+
+/**
+ * enable the specified buck converter.
+ * @param nth 1 ~ 4.
+ * @param alt 0 for MAIN, 1 for ALT.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+stpmic_ret_t __stpmic_buck_enable(uint8_t nth, uint8_t alt);
 
 /**
  * enable the specified buck converter.
@@ -995,7 +1052,33 @@ stpmic_ret_t stpmic_buck_setup(uint8_t nth, stpmic_buck_t* opts);
  * `STPMIC_RET_TIMEOUT` if timeout reached.
  * `STPMIC_RET_RANGE` if `nth` value is out of range.
  */
-stpmic_ret_t stpmic_buck_enable(uint8_t nth);
+static inline stpmic_ret_t stpmic_buck_enable(uint8_t nth) {
+    return __stpmic_buck_enable(nth, 0);
+}
+
+/**
+ * enable the specified buck converter.
+ * @param nth 1 ~ 4.
+ * @param alt 0 for MAIN, 1 for ALT.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_buck_alt_enable(uint8_t nth, uint8_t alt) {
+    return __stpmic_buck_enable(nth, 1);
+}
+
+/**
+ * disable the specified buck converter.
+ * @param nth 1 ~ 4.
+ * @param alt 0 for MAIN, 1 for ALT.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+stpmic_ret_t __stpmic_buck_disable(uint8_t nth, uint8_t alt);
 
 /**
  * disable the specified buck converter.
@@ -1005,7 +1088,22 @@ stpmic_ret_t stpmic_buck_enable(uint8_t nth);
  * `STPMIC_RET_TIMEOUT` if timeout reached.
  * `STPMIC_RET_RANGE` if `nth` value is out of range.
  */
-stpmic_ret_t stpmic_buck_disable(uint8_t nth);
+static inline stpmic_ret_t stpmic_buck_disable(uint8_t nth) {
+    return __stpmic_buck_disable(nth, 0);
+}
+
+/**
+ * disable the specified buck converter.
+ * @param nth 1 ~ 4.
+ * @param alt 0 for MAIN, 1 for ALT.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_buck_alt_disable(uint8_t nth, uint8_t alt) {
+    return __stpmic_buck_disable(nth, 1);
+}
 
 /* LDO parameters. */
 typedef struct {
@@ -1106,13 +1204,52 @@ typedef enum {
 /**
  * setup the specified LDO.
  * @param nth 1 ~ 6.
+ * @param alt 0 for MAIN, 1 for ALT.
  * @param opts options to set.
  * @return
  * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
  * `STPMIC_RET_TIMEOUT` if timeout reached.
  * `STPMIC_RET_RANGE` if `nth` value is out of range.
  */
-stpmic_ret_t stpmic_ldo_setup(uint8_t nth, stpmic_ldo_t* opts);
+stpmic_ret_t __stpmic_ldo_setup(uint8_t nth, uint8_t alt, stpmic_ldo_t* opts);
+
+/**
+ * setup the specified LDO.
+ * @param nth 1 ~ 6.
+ * @param opts options to set.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_ldo_setup(uint8_t nth, stpmic_ldo_t* opts) {
+    return __stpmic_ldo_setup(nth, 0, opts);
+}
+
+/**
+ * setup the specified LDO.
+ * @param nth 1 ~ 6.
+ * @param opts options to set.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_ldo_alt_setup(uint8_t nth, stpmic_ldo_t* opts) {
+    return __stpmic_ldo_setup(nth, 1, opts);
+}
+
+
+/**
+ * enable the specified LDO.
+ * @param nth 1 ~ 6.
+ * @param alt 0 for MAIN, 1 for ALT.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+stpmic_ret_t __stpmic_ldo_enable(uint8_t nth, uint8_t alt);
 
 /**
  * enable the specified LDO.
@@ -1122,7 +1259,32 @@ stpmic_ret_t stpmic_ldo_setup(uint8_t nth, stpmic_ldo_t* opts);
  * `STPMIC_RET_TIMEOUT` if timeout reached.
  * `STPMIC_RET_RANGE` if `nth` value is out of range.
  */
-stpmic_ret_t stpmic_ldo_enable(uint8_t nth);
+static inline stpmic_ret_t stpmic_ldo_enable(uint8_t nth) {
+    return __stpmic_ldo_enable(nth, 0);
+}
+
+/**
+ * enable the specified LDO.
+ * @param nth 1 ~ 6.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_ldo_alt_enable(uint8_t nth) {
+    return __stpmic_ldo_enable(nth, 1);
+}
+
+/**
+ * disable the specified LDO.
+ * @param nth 1 ~ 6.
+ * @param alt 0 for MAIN, 1 for ALT.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+stpmic_ret_t __stpmic_ldo_disable(uint8_t nth, uint8_t alt);
 
 /**
  * disable the specified LDO.
@@ -1132,7 +1294,91 @@ stpmic_ret_t stpmic_ldo_enable(uint8_t nth);
  * `STPMIC_RET_TIMEOUT` if timeout reached.
  * `STPMIC_RET_RANGE` if `nth` value is out of range.
  */
-stpmic_ret_t stpmic_ldo_disable(uint8_t nth);
+static inline stpmic_ret_t stpmic_ldo_disable(uint8_t nth) {
+    return __stpmic_ldo_disable(nth, 1);
+}
+
+/**
+ * disable the specified LDO.
+ * @param nth 1 ~ 6.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_ldo_alt_disable(uint8_t nth) {
+    return __stpmic_ldo_disable(nth, 1);
+}
+
+/**
+ * enable the REFDDR.
+ * @param nth 1 ~ 6.
+ * @param alt 0 for MAIN, 1 for ALT.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+stpmic_ret_t __stpmic_refddr_enable(uint8_t alt);
+
+/**
+ * enable the REFDDR.
+ * @param nth 1 ~ 6.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_refddr_enable() {
+    return __stpmic_refddr_enable(0);
+}
+
+/**
+ * enable the REFDDR.
+ * @param nth 1 ~ 6.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_refddr_alt_enable() {
+    return __stpmic_refddr_enable(1);
+}
+
+/**
+ * disable the REFDDR.
+ * @param nth 1 ~ 6.
+ * @param alt 0 for MAIN, 1 for ALT.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+stpmic_ret_t __stpmic_refddr_disable(uint8_t alt);
+
+/**
+ * disable the REFDDR.
+ * @param nth 1 ~ 6.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_refddr_disable() {
+    return __stpmic_refddr_enable(0);
+}
+
+/**
+ * disable the REFDDR.
+ * @param nth 1 ~ 6.
+ * @return
+ * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
+ * `STPMIC_RET_TIMEOUT` if timeout reached.
+ * `STPMIC_RET_RANGE` if `nth` value is out of range.
+ */
+static inline stpmic_ret_t stpmic_refddr_alt_disable() {
+    return __stpmic_refddr_enable(0);
+}
 
 #ifdef __cplusplus
 }

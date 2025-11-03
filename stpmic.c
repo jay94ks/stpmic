@@ -652,7 +652,7 @@ stpmic_ret_t stpmic_watchdog_reset() {
 }
 
 /* setup one of buck #1 ~ #4. */
-stpmic_ret_t stpmic_buck_setup(uint8_t nth, stpmic_buck_t* opts) {
+stpmic_ret_t __stpmic_buck_setup(uint8_t nth, uint8_t alt, stpmic_buck_t* opts) {
     if (nth <= 0 || nth > 4) {
         return STPMIC_RET_RANGE;
     }
@@ -682,21 +682,20 @@ stpmic_ret_t stpmic_buck_setup(uint8_t nth, stpmic_buck_t* opts) {
     }
 
     return stpmic_write(
-        (stpmic_regid_t)(STPMIC_REG_BUCKx_MAIN_CR + (nth - 1)),
+        (stpmic_regid_t)((
+            alt 
+            ? STPMIC_REG_BUCKx_ALT_CR 
+            : STPMIC_REG_BUCKx_MAIN_CR
+        ) + (nth - 1)),
         val);
 }
 
-/**
- * enable the specified buck converter.
- * @param nth 1 ~ 4.
- * @return
- * `STPMIC_RET_NODEV` if STPMIC driver is not ready.
- * `STPMIC_RET_TIMEOUT` if timeout reached.
- * `STPMIC_RET_RANGE` if `nth` value is out of range.
- */
-stpmic_ret_t stpmic_buck_enable(uint8_t nth) {
+/* enable the specified buck converter. */
+stpmic_ret_t __stpmic_buck_enable(uint8_t nth, uint8_t alt) {
     stpmic_reg_t reg;
-    stpmic_ret_t ret = stpmic_buck_main_cr(nth, &reg);
+    stpmic_ret_t ret = alt
+        ? stpmic_buck_alt_cr(nth, &reg)
+        : stpmic_buck_main_cr(nth, &reg);
 
     if (ret != STPMIC_RET_OK) {
         return ret;
@@ -708,14 +707,20 @@ stpmic_ret_t stpmic_buck_enable(uint8_t nth) {
 
     reg |= STPMIC_BIT_MASK(0);
     return stpmic_write(
-        (stpmic_regid_t)(STPMIC_REG_BUCKx_MAIN_CR + (nth - 1)),
+        (stpmic_regid_t)((
+            alt 
+            ? STPMIC_REG_BUCKx_ALT_CR 
+            : STPMIC_REG_BUCKx_MAIN_CR
+        ) + (nth - 1)),
         reg);
 }
 
 /* disable the specified buck converter. */
-stpmic_ret_t stpmic_buck_disable(uint8_t nth) {
+stpmic_ret_t __stpmic_buck_disable(uint8_t nth, uint8_t alt) {
     stpmic_reg_t reg;
-    stpmic_ret_t ret = stpmic_buck_main_cr(nth, &reg);
+    stpmic_ret_t ret = alt
+        ? stpmic_buck_alt_cr(nth, &reg)
+        : stpmic_buck_main_cr(nth, &reg);
 
     if (ret != STPMIC_RET_OK) {
         return ret;
@@ -727,12 +732,16 @@ stpmic_ret_t stpmic_buck_disable(uint8_t nth) {
 
     reg &= ~STPMIC_BIT_MASK(0);
     return stpmic_write(
-        (stpmic_regid_t)(STPMIC_REG_BUCKx_MAIN_CR + (nth - 1)),
+        (stpmic_regid_t)((
+            alt 
+            ? STPMIC_REG_BUCKx_ALT_CR 
+            : STPMIC_REG_BUCKx_MAIN_CR
+        ) + (nth - 1)),
         reg);
 }
 
 /* setup the specified LDO. */
-stpmic_ret_t stpmic_ldo_setup(uint8_t nth, stpmic_ldo_t* opts) {
+stpmic_ret_t __stpmic_ldo_setup(uint8_t nth, uint8_t alt, stpmic_ldo_t* opts) {
     stpmic_reg_t ldo;
     stpmic_reg_t reg;
     stpmic_ret_t ret;
@@ -742,7 +751,6 @@ stpmic_ret_t stpmic_ldo_setup(uint8_t nth, stpmic_ldo_t* opts) {
             return ret;
         }
 
-        ldo = (stpmic_reg_t)(STPMIC_REG_LDOx_MAIN_CR + (nth - 1));
         reg = stpmic_set_ldo1234pd(reg, nth, opts->pd);
 
         if ((ret = stpmic_write(STPMIC_REG_LDO1234_PD_CR, reg)) != STPMIC_RET_OK) {
@@ -755,7 +763,6 @@ stpmic_ret_t stpmic_ldo_setup(uint8_t nth, stpmic_ldo_t* opts) {
             return ret;
         }
 
-        ldo = (stpmic_reg_t)(STPMIC_REG_LDOx_MAIN_CR + (nth - 1));
         reg = stpmic_set_ldo56pd(reg, nth, opts->pd);
 
         if ((ret = stpmic_write(STPMIC_REG_LDO56_VREF_PD_CR, reg)) != STPMIC_RET_OK) {
@@ -765,6 +772,12 @@ stpmic_ret_t stpmic_ldo_setup(uint8_t nth, stpmic_ldo_t* opts) {
 
     else {
         return STPMIC_RET_RANGE;
+    }
+
+    if (alt) {
+        ldo = (stpmic_reg_t)(STPMIC_REG_LDOx_ALT_CR + (nth - 1));
+    } else {
+        ldo = (stpmic_reg_t)(STPMIC_REG_LDOx_MAIN_CR + (nth - 1));
     }
 
     uint8_t val = 0;
@@ -825,15 +838,17 @@ stpmic_ret_t stpmic_ldo_setup(uint8_t nth, stpmic_ldo_t* opts) {
 }
 
 /* enable the specified LDO. */
-stpmic_ret_t stpmic_ldo_enable(uint8_t nth) {
+stpmic_ret_t __stpmic_ldo_enable(uint8_t nth, uint8_t alt) {
     if (nth <= 0 || nth > 6) {
         return STPMIC_RET_RANGE;
     }
 
     stpmic_reg_t reg;
-    stpmic_regid_t ldo = (stpmic_reg_t)(STPMIC_REG_LDOx_MAIN_CR + (nth - 1));
-    stpmic_ret_t ret = stpmic_read(ldo, &reg);
+    stpmic_regid_t ldo = (stpmic_reg_t)((
+        alt ? STPMIC_REG_LDOx_ALT_CR : STPMIC_REG_LDOx_MAIN_CR
+    ) + (nth - 1));
 
+    stpmic_ret_t ret = stpmic_read(ldo, &reg);
     if (ret != STPMIC_RET_OK) {
         return ret;
     }
@@ -847,13 +862,16 @@ stpmic_ret_t stpmic_ldo_enable(uint8_t nth) {
 }
 
 /* disable the specified LDO. */
-stpmic_ret_t stpmic_ldo_disable(uint8_t nth) {
+stpmic_ret_t __stpmic_ldo_disable(uint8_t nth, uint8_t alt) {
     if (nth <= 0 || nth > 6) {
         return STPMIC_RET_RANGE;
     }
 
     stpmic_reg_t reg;
-    stpmic_regid_t ldo = (stpmic_reg_t)(STPMIC_REG_LDOx_MAIN_CR + (nth - 1));
+    stpmic_regid_t ldo = (stpmic_reg_t)((
+        alt ? STPMIC_REG_LDOx_ALT_CR : STPMIC_REG_LDOx_MAIN_CR
+    ) + (nth - 1));
+    
     stpmic_ret_t ret = stpmic_read(ldo, &reg);
 
     if (ret != STPMIC_RET_OK) {
@@ -866,4 +884,38 @@ stpmic_ret_t stpmic_ldo_disable(uint8_t nth) {
 
     reg &= ~STPMIC_BIT_MASK(0);
     return stpmic_write(ldo, reg);
+}
+
+/* enable the REFDDR. */
+stpmic_ret_t __stpmic_refddr_enable(uint8_t alt) {
+    stpmic_reg_t reg;
+    stpmic_ret_t ret = stpmic_read((
+        alt ? STPMIC_REG_REFDDR_ALT_CR : STPMIC_REG_REFDDR_MAIN_CR
+    ), &reg);
+
+    if (ret != STPMIC_RET_OK) {
+        return ret;
+    }
+
+    reg |= STPMIC_BIT_MASK(0);
+    return stpmic_write((
+        alt ? STPMIC_REG_REFDDR_ALT_CR : STPMIC_REG_REFDDR_MAIN_CR
+    ), reg);
+}
+
+/* disable the REFDDR. */
+stpmic_ret_t __stpmic_refddr_disable(uint8_t alt) {
+    stpmic_reg_t reg;
+    stpmic_ret_t ret = stpmic_read((
+        alt ? STPMIC_REG_REFDDR_ALT_CR : STPMIC_REG_REFDDR_MAIN_CR
+    ), &reg);
+
+    if (ret != STPMIC_RET_OK) {
+        return ret;
+    }
+
+    reg &= ~STPMIC_BIT_MASK(0);
+    return stpmic_write((
+        alt ? STPMIC_REG_REFDDR_ALT_CR : STPMIC_REG_REFDDR_MAIN_CR
+    ), reg);
 }
